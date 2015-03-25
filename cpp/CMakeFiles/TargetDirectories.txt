@@ -1,0 +1,1 @@
+/Users/larshnordli/ms-finger-paint/cpp/CMakeFiles/webcam.dir
