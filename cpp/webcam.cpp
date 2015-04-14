@@ -1,46 +1,41 @@
-#include "opencv2/highgui/highgui.hpp"
+//#include "stdafx.h"
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
 #include <iostream>
-
+#include <cv.h>
+#include <highgui.h>
 using namespace cv;
 using namespace std;
 
-int main(int argc, char* argv[])
-{
-    VideoCapture cap(0); // open the video camera no. 0
+char key;
 
-    if (!cap.isOpened())  // if not success, exit program
-    {
-cout << "Cannot open the video cam" << endl;
-        return -1;
-    }
+int main(int argc, char * argv[]){
+	cvNamedWindow("Finger Paint", 1);    //Create window
+	CvCapture* capture = cvCaptureFromCAM(CV_CAP_ANY);  //Capture using any camera connected to your system
+	
+	while(1){ //Create infinte loop for live streaming
+		//--
 
-   double dWidth = cap.get(CV_CAP_PROP_FRAME_WIDTH); //get the width of frames of the video
-   double dHeight = cap.get(CV_CAP_PROP_FRAME_HEIGHT); //get the height of frames of the video
+		IplImage* frame = cvQueryFrame(capture); //Create image frames from capture
+		IplImage* frameHSV = cvCreateImage(cvGetSize(frame), 8, 3);
+		
+		cvCvtColor(frame, frameHSV, CV_RGB2HSV);
+		IplImage* frameThreshold = cvCreateImage(cvGetSize(frameHSV), 8, 1);
 
-    cout << "Frame size : " << dWidth << " x " << dHeight << endl;
+		cvInRangeS(frame, cvScalar(13, 71, 81), cvScalar(255, 255, 47), frameThreshold);
 
-    namedWindow("MyVideo",CV_WINDOW_AUTOSIZE); //create a window called "MyVideo"
+		//--
+		
+		cvShowImage("Finger Paint", frameThreshold); //Show image frames on created window 
+		
+		key = cvWaitKey(10); //Capture Keyboard stroke
+		if(char (key) == 27){
+			break; //If you hit ESC key loop will break.
+		}
+	}
 
-    while (1)
-    {
-        Mat frame;
+cvReleaseCapture(&capture); //Release capture.
+cvDestroyWindow("Finger Paint"); //Destroy Window
 
-        bool bSuccess = cap.read(frame); // read a new frame from video
-
-if (!bSuccess) //if not success, break loop
-{
-cout << "Cannot read a frame from video stream" << endl;
-break;
-}
-
-        imshow("MyVideo", frame); //show the frame in "MyVideo" window
-
-        if (waitKey(30) == 27) //wait for 'esc' key press for 30ms. If 'esc' key is pressed, break loop
-{
-cout << "esc key is pressed by user" << endl;
-break; 
-}
-    }
-    return 0;
-
+return 0;
 }
