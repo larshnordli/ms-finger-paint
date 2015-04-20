@@ -1,41 +1,82 @@
-//#include "stdafx.h"
-#include <opencv2/core/core.hpp>
-#include <opencv2/highgui/highgui.hpp>
 #include <iostream>
-#include <cv.h>
-#include <highgui.h>
+#include "opencv2/highgui/highgui.hpp"
+#include "opencv2/imgproc/imgproc.hpp"
+
 using namespace cv;
 using namespace std;
 
-char key;
-
-int main(int argc, char * argv[]){
-	cvNamedWindow("Finger Paint", 1);    //Create window
-	CvCapture* capture = cvCaptureFromCAM(CV_CAP_ANY);  //Capture using any camera connected to your system
+int main(int argc, char** argv){
 	
-	while(1){ //Create infinte loop for live streaming
-		//--
+	VideoCapture cap(0);
 
-		IplImage* frame = cvQueryFrame(capture); //Create image frames from capture
-		IplImage* frameHSV = cvCreateImage(cvGetSize(frame), 8, 3);
-		
-		cvCvtColor(frame, frameHSV, CV_RGB2HSV);
-		IplImage* frameThreshold = cvCreateImage(cvGetSize(frameHSV), 8, 1);
+	if(! cap.isOpened()){
+		cout << "Cannot open webcam" << endl;
+		return -1;
+	}
 
-		cvInRangeS(frame, cvScalar(13, 71, 81), cvScalar(255, 255, 47), frameThreshold);
+	namedWindow("MS Finger Paint", CV_WINDOW_AUTOSIZE);
+	namedWindow("Control", CV_WINDOW_AUTOSIZE);
 
-		//--
+	int lowH = 100;
+	int highH = 179;
+
+	int lowS = 75; 
+	int highS = 210;
+
+	int lowV = 104;
+	int highV = 255;
+
+	//Create trackbars in "Control" window
+	cvCreateTrackbar("LowH", "Control", &lowH, 179);
+	cvCreateTrackbar("HighH", "Control", &highH, 179);
+
+	cvCreateTrackbar("LowS", "Control", &lowS, 255);
+	cvCreateTrackbar("HighS", "Control", &highS, 255);
+
+	cvCreateTrackbar("LowV", "Control", &lowV, 255);
+	cvCreateTrackbar("HighV", "Control", &highV, 255);
+	
+	while(true){ //Create infinte loop for live streaming
+
+		Mat frame;
+		Mat frameHSV;
+		Mat frameThreshold;
+		Mat ellipse = getStructuringElement(MORPH_ELLIPSE, Size(5, 5));
+
+		bool bSuccess = cap.read(frame);
+
+		if(!bSuccess){
+			cout << "Cannot read stream" << endl;
+			break;
+		}
+
+		flip(frame, frame, 1); //mirror image
 		
-		cvShowImage("Finger Paint", frameThreshold); //Show image frames on created window 
+		cvtColor(frame, frameHSV, CV_RGB2HSV); //convert RGB -> HSV
+
+		inRange(frameHSV, Scalar(lowH, lowS, lowV), Scalar(highH, highS, highV), frameThreshold);
+
+		//morphological opening (remove small objects from the foreground)
+	  	erode(frameThreshold, frameThreshold, ellipse);
+	  	dilate( frameThreshold, frameThreshold, ellipse); 
+
+	  	//morphological closing (fill small holes in the foreground)
+	  	dilate( frameThreshold, frameThreshold,ellipse); 
+	  	erode(frameThreshold, frameThreshold, ellipse);
 		
-		key = cvWaitKey(10); //Capture Keyboard stroke
-		if(char (key) == 27){
-			break; //If you hit ESC key loop will break.
+		imshow("MS Finger Paint", frameThreshold); //Show image frames on created window 
+
+		if(waitKey(30) == 27){
+			cout << "lowH: " << lowH << endl;
+			cout << "highH: " << highH << endl;
+			cout << "lowS: " << lowS << endl;
+			cout << "highS: " << highS << endl;
+			cout << "lowV: " << lowV << endl;
+			cout << "highV: " << highV << endl;
+			cout << "Initiated quit by user" << endl;
+			break;
 		}
 	}
 
-cvReleaseCapture(&capture); //Release capture.
-cvDestroyWindow("Finger Paint"); //Destroy Window
-
-return 0;
+	return 0;
 }
