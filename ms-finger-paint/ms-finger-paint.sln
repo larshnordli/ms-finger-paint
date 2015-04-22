@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2013
+VisualStudioVersion = 12.0.30501.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ms-finger-paint", "ms-finger-paint\ms-finger-paint.vcxproj", "{7E1A56AF-86BC-4B04-A57A-82D597FA77A9}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7E1A56AF-86BC-4B04-A57A-82D597FA77A9}.Debug|Win32.ActiveCfg = Debug|Win32
+		{7E1A56AF-86BC-4B04-A57A-82D597FA77A9}.Debug|Win32.Build.0 = Debug|Win32
+		{7E1A56AF-86BC-4B04-A57A-82D597FA77A9}.Release|Win32.ActiveCfg = Release|Win32
+		{7E1A56AF-86BC-4B04-A57A-82D597FA77A9}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

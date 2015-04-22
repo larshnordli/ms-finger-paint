@@ -1,0 +1,13 @@
+﻿Build started 22.04.2015 17:30:52.
+Project "C:\Users\LarsHenrik\documents\visual studio 2013\Projects\ms-finger-paint\ms-finger-paint\ms-finger-paint.vcxproj" on node 2 (Build target(s)).
+Link:
+  C:\Program Files\Microsoft Visual Studio 12.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"C:\Users\LarsHenrik\documents\visual studio 2013\Projects\ms-finger-paint\Release\ms-finger-paint.exe" /INCREMENTAL:NO /NOLOGO opencv_core2410d.lib opencv_objdetect2410d.lib opencv_imgproc2410d.lib opencv_highgui2410d.lib opencv_ml2410d.lib opencv_video2410d.lib opencv_features2d2410d.lib opencv_calib3d2410d.lib opencv_contrib2410d.lib opencv_legacy2410d.lib opencv_flann2410d.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:\Users\LarsHenrik\documents\visual studio 2013\Projects\ms-finger-paint\Release\ms-finger-paint.pdb" /SUBSYSTEM:CONSOLE /OPT:REF /OPT:ICF /LTCG /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\Users\LarsHenrik\documents\visual studio 2013\Projects\ms-finger-paint\Release\ms-finger-paint.lib" /MACHINE:X86 /SAFESEH Release\stdafx.obj
+  Release\webcam.obj
+  Generating code
+  Finished generating code
+  ms-finger-paint.vcxproj -> C:\Users\LarsHenrik\documents\visual studio 2013\Projects\ms-finger-paint\Release\ms-finger-paint.exe
+Done Building Project "C:\Users\LarsHenrik\documents\visual studio 2013\Projects\ms-finger-paint\ms-finger-paint\ms-finger-paint.vcxproj" (Build target(s)).
+
+Build succeeded.
+
+Time Elapsed 00:00:01.79
