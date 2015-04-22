@@ -26,6 +26,8 @@ int main(int argc, char** argv){
 	int lowV = 95;
 	int highV = 255;
 
+	int blur = 15;
+
 	//Create trackbars in "Control" window
 	cvCreateTrackbar("LowH", "Control", &lowH, 179);
 	cvCreateTrackbar("HighH", "Control", &highH, 179);
@@ -35,6 +37,8 @@ int main(int argc, char** argv){
 
 	cvCreateTrackbar("LowV", "Control", &lowV, 255);
 	cvCreateTrackbar("HighV", "Control", &highV, 255);
+
+	cvCreateTrackbar("Averaging", "Control", &blur, 255)
 	
 	while(true){ //Create infinte loop for live streaming
 
