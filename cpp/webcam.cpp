@@ -5,6 +5,24 @@
 using namespace cv;
 using namespace std;
 
+void CallBackFunc(int event, int x, int y, int flags, void* userdata)
+{
+     if  ( event == EVENT_LBUTTONDOWN ){
+          cout << "Left button of the mouse is clicked - position (" << x << ", " << y << ")" << endl;
+     }
+     else if  ( event == EVENT_RBUTTONDOWN ){
+          cout << "Right button of the mouse is clicked - position (" << x << ", " << y << ")" << endl;
+     }
+     else if  ( event == EVENT_MBUTTONDOWN ){
+          cout << "Middle button of the mouse is clicked - position (" << x << ", " << y << ")" << endl;
+     }
+     else if ( event == EVENT_MOUSEMOVE ){
+     		//curPos(10,10);
+          cout << "Mouse move over the window - position (" << x << ", " << y << ")" << endl;
+
+     }
+}
+
 int main(int argc, char** argv){
 	
 	VideoCapture cap(0);
@@ -14,19 +32,21 @@ int main(int argc, char** argv){
 		return -1;
 	}
 
-	namedWindow("MS Finger Paint", CV_WINDOW_AUTOSIZE);
-	namedWindow("Control", CV_WINDOW_AUTOSIZE);
+	namedWindow("MS Finger Paint", CV_WINDOW_NORMAL);
+	setMouseCallback("MS Finger Paint", CallBackFunc, NULL);
+	namedWindow("Control", CV_WINDOW_NORMAL);
 
-	int lowH = 109;
-	int highH = 143;
+	int lowH = 111;
+	int highH = 123;
 
-	int lowS = 76; 
-	int highS = 172;
+	int lowS = 98; 
+	int highS = 255;
 
-	int lowV = 95;
+	int lowV = 62;
 	int highV = 255;
 
-	int blur = 15;
+	int avgBlur = 17;
+	int depth = 145;
 
 	//Create trackbars in "Control" window
 	cvCreateTrackbar("LowH", "Control", &lowH, 179);
@@ -38,7 +58,8 @@ int main(int argc, char** argv){
 	cvCreateTrackbar("LowV", "Control", &lowV, 255);
 	cvCreateTrackbar("HighV", "Control", &highV, 255);
 
-	cvCreateTrackbar("Averaging", "Control", &blur, 255)
+	cvCreateTrackbar("Averaging", "Control", &avgBlur, 101);
+	cvCreateTrackbar("Depth", "Control", &depth, 300);
 	
 	while(true){ //Create infinte loop for live streaming
 
@@ -46,6 +67,8 @@ int main(int argc, char** argv){
 		Mat frameHSV;
 		Mat frameThreshold;
 		Mat ellipse = getStructuringElement(MORPH_ELLIPSE, Size(5, 5));
+		RNG rng(12345);
+		vector<Vec4i> hierarchy;
 
 		bool bSuccess = cap.read(frame);
 
@@ -54,38 +77,84 @@ int main(int argc, char** argv){
 			break;
 		}
 
-		flip(frame, frame, 1); //mirror image
+		//frame = imread("image.jpg", CV_LOAD_IMAGE_COLOR);
 		
-		cvtColor(frame, frameHSV, CV_RGB2HSV); //convert RGB -> HSV
+		//mirror image
+		flip(frame, frame, 1);
+		
+		//convert RGB -> HSV
+		cvtColor(frame, frameHSV, CV_RGB2HSV);
 
-		blur(frameHSV, frameHSV, Size(5, 5));
+		//average blur
+		blur(frameHSV, frameHSV, Size(avgBlur, avgBlur));
 
+		//threshold
 		inRange(frameHSV, Scalar(lowH, lowS, lowV), Scalar(highH, highS, highV), frameThreshold);
 
-		//morphological opening (remove small objects from the foreground)
+		//open and close
 	  	erode(frameThreshold, frameThreshold, ellipse);
-	  	dilate( frameThreshold, frameThreshold, ellipse); 
-
-	  	//morphological closing (fill small holes in the foreground)
-	  	dilate( frameThreshold, frameThreshold,ellipse); 
+	  	dilate(frameThreshold, frameThreshold, ellipse); 
+	  	dilate(frameThreshold, frameThreshold,ellipse); 
 	  	erode(frameThreshold, frameThreshold, ellipse);
 
+	  	//find contours
 	  	vector<vector <Point> > contours;
 	  	Mat contourOutput = frameThreshold.clone();
+	  	
 	  	findContours(contourOutput, contours, CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
 
-	  	Mat contourImage(frameThreshold.size(), CV_8UC3, Scalar(0,0,0));
-	  	Scalar colors[3];
-	  	colors[0] = Scalar(255, 0, 0);
-	  	colors[1] = Scalar(0, 255, 0);
-	  	colors[2] = Scalar(0, 0, 255);
+	  	//hull convex and convex defects
+	  	vector<vector<Point> > hull(contours.size());
+	  	vector<vector<Point> > hull_indice_points(contours.size());
+	  	vector<vector<int> > hull_indices(contours.size());
+	  	int num_fingers = 0;
+	  	vector<vector<Vec4i> > defects(contours.size());
+	  	Mat drawing = Mat::zeros(contourOutput.size(), CV_8UC3);
 
-	  	for(size_t idx = 0; idx < contours.size(); idx++){
-	  		drawContours(contourImage, contours, idx, colors[idx % 3]);
+	  	for(int i = 0; i < contours.size(); i++){
+	  		convexHull(Mat(contours[i]), hull[i], false);
+	  		convexHull(Mat(contours[i]), hull_indices[i], false);
+	  		if(hull_indices[i].size() > 3)
+  				convexityDefects(Mat(contours[i]), hull_indices[i], defects[i]);
+
+  			//find defects
+  			for(int j = 0; j < hull[i].size(); j++){
+  				int indice = hull_indices[i][j];
+  				hull_indice_points[i].push_back(contours[i][indice]);
+  			}
+
+  			for(int j = 0; j < defects[i].size(); j++){
+
+  				if(defects[i][j][3] > depth*256){
+  					num_fingers++;
+	  				int start = defects[i][j][0];
+	  				int end = defects[i][j][1];
+	  				int furthest = defects[i][j][2];
+	  				hull_indice_points[i].push_back(contours[i][furthest]);
+	  				
+	  				//circle(drawing, contours[i][start], 5, Scalar(0,255, 100), -1);
+	  				circle(drawing, contours[i][end], 5, Scalar(0, 255, 0), -1);
+	  				circle(drawing, contours[i][furthest], 5, Scalar(0, 0, 255), -1);
+	  				
+	  				line(drawing, contours[i][furthest], contours[i][start], Scalar(0, 0, 255), 1);
+	  				line(drawing, contours[i][furthest], contours[i][end], Scalar(0, 0, 255), 1);
+  				}
+  			}
 	  	}
-		
-	  	imshow("Contour", contourImage);
-		imshow("MS Finger Paint", frameThreshold); //Show image frames on created window 
+
+	  	for(int i = 0; i < contours.size(); i++){
+	  		Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
+	  		//draw contours
+	  		drawContours(drawing, contours, i, color, 1, 8, vector<Vec4i>(), 0, Point());
+	  	}
+
+	  	//cursor operations
+
+	  	if(num_fingers == 3){
+	  		
+	  	}
+	  	
+		imshow("MS Finger Paint", drawing); //Show image frames on created window 
 
 		if(waitKey(30) == 27){
 			cout << "lowH: " << lowH << endl;
@@ -94,6 +163,8 @@ int main(int argc, char** argv){
 			cout << "highS: " << highS << endl;
 			cout << "lowV: " << lowV << endl;
 			cout << "highV: " << highV << endl;
+			cout << "blur: " << avgBlur << endl;
+			cout << "depth: " << depth << endl;
 			cout << "Initiated quit by user" << endl;
 			break;
 		}
