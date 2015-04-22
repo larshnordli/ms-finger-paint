@@ -17,13 +17,13 @@ int main(int argc, char** argv){
 	namedWindow("MS Finger Paint", CV_WINDOW_AUTOSIZE);
 	namedWindow("Control", CV_WINDOW_AUTOSIZE);
 
-	int lowH = 100;
-	int highH = 179;
+	int lowH = 109;
+	int highH = 143;
 
-	int lowS = 75; 
-	int highS = 210;
+	int lowS = 76; 
+	int highS = 172;
 
-	int lowV = 104;
+	int lowV = 95;
 	int highV = 255;
 
 	//Create trackbars in "Control" window
@@ -54,6 +54,8 @@ int main(int argc, char** argv){
 		
 		cvtColor(frame, frameHSV, CV_RGB2HSV); //convert RGB -> HSV
 
+		blur(frameHSV, frameHSV, Size(5, 5));
+
 		inRange(frameHSV, Scalar(lowH, lowS, lowV), Scalar(highH, highS, highV), frameThreshold);
 
 		//morphological opening (remove small objects from the foreground)
@@ -63,7 +65,22 @@ int main(int argc, char** argv){
 	  	//morphological closing (fill small holes in the foreground)
 	  	dilate( frameThreshold, frameThreshold,ellipse); 
 	  	erode(frameThreshold, frameThreshold, ellipse);
+
+	  	vector<vector <Point> > contours;
+	  	Mat contourOutput = frameThreshold.clone();
+	  	findContours(contourOutput, contours, CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
+
+	  	Mat contourImage(frameThreshold.size(), CV_8UC3, Scalar(0,0,0));
+	  	Scalar colors[3];
+	  	colors[0] = Scalar(255, 0, 0);
+	  	colors[1] = Scalar(0, 255, 0);
+	  	colors[2] = Scalar(0, 0, 255);
+
+	  	for(size_t idx = 0; idx < contours.size(); idx++){
+	  		drawContours(contourImage, contours, idx, colors[idx % 3]);
+	  	}
 		
+	  	imshow("Contour", contourImage);
 		imshow("MS Finger Paint", frameThreshold); //Show image frames on created window 
 
 		if(waitKey(30) == 27){
