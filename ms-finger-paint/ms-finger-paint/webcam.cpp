@@ -1,6 +1,8 @@
 #include "stdafx.h"
 #include <windows.h>
 #include <winuser.h>
+#include <thread>
+#include <chrono>
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 #include <iostream>
@@ -43,25 +45,26 @@ int main(int argc, char** argv){
 
 	VideoCapture cap(0);
 
+	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
 	if (!cap.isOpened()){
 		cout << "Cannot open webcam" << endl;
 		return -1;
 	}
 
 	namedWindow("MS Finger Paint", CV_WINDOW_NORMAL);
-	//setMouseCallback("MS Finger Paint", CallBackFunc, NULL);
 	namedWindow("Control", CV_WINDOW_NORMAL);
 
-	int minYCC1 = 53;
-	int minYCC2 = 133;
-	int minYCC3 = 110;
+	int minYCC1 = 86;
+	int minYCC2 = 140;
+	int minYCC3 = 97;
 
-	int maxYCC1 = 97;
-	int maxYCC2 = 158;
-	int maxYCC3 = 142;
+	int maxYCC1 = 255;
+	int maxYCC2 = 176;
+	int maxYCC3 = 136;
 
-	int gauss_blur = 5;
-	int depth = 88;
+	int gauss_blur = 7;
+	int depth = 65;
 	int ellipse_size = 3;
 
 	//Create trackbars in "Control" window
@@ -75,14 +78,14 @@ int main(int argc, char** argv){
 
 	cvCreateTrackbar("Gaussian", "Control", &gauss_blur, 20);
 	cvCreateTrackbar("Depth", "Control", &depth, 300);
-	//cvCreateTrackbar("EllipseSize", "Control", &ellipse_size, 20);
+	cvCreateTrackbar("EllipseSize", "Control", &ellipse_size, 20);
 
 	while (true){ //Create infinte loop for live streaming
 
 		Mat frame;
 		Mat frameYCC;
 		Mat frameThreshold;
-		Mat ellipse = getStructuringElement(MORPH_ELLIPSE, Size(3, 3));
+		Mat ellipse = getStructuringElement(MORPH_ELLIPSE, Size(ellipse_size, ellipse_size));
 		RNG rng(12345);
 		vector<Vec4i> hierarchy;
 
@@ -104,9 +107,10 @@ int main(int argc, char** argv){
 		cvtColor(frame, frameYCC, CV_BGR2YCrCb);
 		//threshold
 		inRange(frameYCC, Scalar(minYCC1, minYCC2, minYCC3), Scalar(maxYCC1, maxYCC2, maxYCC3), frameThreshold); //CV_THRESH_OTSU?
-		//open and close
+		//open
 		erode(frameThreshold, frameThreshold, ellipse);
 		dilate(frameThreshold, frameThreshold, ellipse);
+		//close
 		dilate(frameThreshold, frameThreshold, ellipse);
 		erode(frameThreshold, frameThreshold, ellipse);
 
@@ -118,11 +122,13 @@ int main(int argc, char** argv){
 		vector<vector<Point> > hull(contours.size());
 		vector<vector<Point> > hull_indice_points(contours.size());
 		vector<vector<int> > hull_indices(contours.size());
+		vector<vector<Vec4i> > defects(contours.size());
 
+		vector<double> areas(contours.size());
 		int num_fingers = 0;
 		Point cursor;
-		vector<vector<Vec4i> > defects(contours.size());
-		Mat drawing = Mat::zeros(frameThreshold.size(), CV_8UC3);
+			
+		Mat drawing = Mat::zeros(frame.size(), CV_8UC3);
 
 		for (int i = 0; i < contours.size(); i++){
 			convexHull(Mat(contours[i]), hull[i], false); //for drawing
@@ -136,6 +142,7 @@ int main(int argc, char** argv){
 				hull_indice_points[i].push_back(contours[i][indice]);
 			}
 
+			//find end points
 			for (int j = 0; j < defects[i].size(); j++){
 
 				if (defects[i][j][3] > depth * 256){
@@ -145,48 +152,53 @@ int main(int argc, char** argv){
 					int furthest = defects[i][j][2];
 					hull_indice_points[i].push_back(contours[i][furthest]);
 
-					circle(drawing, contours[i][start], 5, Scalar(255, 0, 0), -1);
-					circle(drawing, contours[i][end], 5, Scalar(0, 255, 0), -1);
-					circle(drawing, contours[i][furthest], 5, Scalar(0, 0, 255), -1);
+					circle(drawing, contours[i][start], 10, Scalar(255, 0, 0), -1); //defect
+					circle(drawing, contours[i][end], 10, Scalar(0, 255, 0), -1); //second finger
+					circle(drawing, contours[i][furthest], 10, Scalar(0, 0, 255), -1); //first finger
 
 					cursor = contours[i][end];
 
 					line(drawing, contours[i][furthest], contours[i][start], Scalar(0, 0, 255), 1);
 					line(drawing, contours[i][furthest], contours[i][end], Scalar(0, 0, 255), 1);
 				}
+
 			}
+
+				areas.push_back( floor( arcLength(hull[i], true) + 10));
 		}
 
 		for (int i = 0; i < contours.size(); i++){
 			Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
 			//draw contours
-			drawContours(drawing, contours, i, color, 1, 8, vector<Vec4i>(), 0, Point());
+			drawContours(drawing, hull, i, color, 1, 8, vector<Vec4i>(), 0, Point());
 		}
-
-		double area0 = contourArea(contours);
-		vector<Point> approx;
-		approxPolyDP(contours, approx, 5, true);
-		double area1 = contourArea(approx);
 
 		//cursor operations
 		if (num_fingers == 1){
 			SetCursorPos(cursor.x, cursor.y);
-			cout << "area0: " << area0 << endl <<
-				"area1: " << area1 << endl <<
-				"approx poly vertices" << approx.size() << endl;
+
+			for (int i = 0; i < areas.size() - 1; i++){
+				/*if (areas[i] > areas[i + 1])
+					mouseLeftClick(cursor.x, cursor.y, 0);
+				else if (areas[i] < areas[i + 1])
+					mouseLeftClick(cursor.x, cursor.y, 1); */
+				cout << i << ":    " << areas[i] << endl;
+			}
+		}
+		else if (num_fingers == 2){
+			//keyboard shortcut to paint bucket tool
+		}
+		else if (num_fingers == 3){
+			//keyboard shortcut to line tool
+		}
+		else if (num_fingers == 4){
+			//keyboard shortcut to eye dropper tool
 		}
 
-		imshow("MS Finger Paint", contours); //Show image frames on created window 
+		imshow("MS Finger Paint", drawing); //Show image frames on created window 
 
+		//Pressing escape closes the program
 		if (waitKey(30) == 27){
-			/*cout << "lowH: " << lowH << endl;
-			cout << "highH: " << highH << endl;
-			cout << "lowS: " << lowS << endl;
-			cout << "highS: " << highS << endl;
-			cout << "lowV: " << lowV << endl;
-			cout << "highV: " << highV << endl;
-			cout << "blur: " << avgBlur << endl;
-			cout << "depth: " << depth << endl;*/
 			cout << "Initiated quit by user" << endl;
 			break;
 		}
